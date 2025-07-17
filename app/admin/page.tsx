@@ -2,284 +2,279 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Globe, TrendingUp, Eye, CheckCircle, AlertCircle, Settings, BarChart3 } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Globe, BarChart3, Eye, Search, AlertCircle, CheckCircle, Settings, Zap } from "lucide-react"
+
+interface SEOConfig {
+  title: string
+  description: string
+  keywords: string
+  author: string
+  url: string
+  language: string
+  logo: string
+  favicon: string
+  ogImage: string
+  googleAnalytics: string
+  googleTagManager: string
+  facebookPixel: string
+}
+
+const defaultConfig: SEOConfig = {
+  title: "Moda Feminina Premium - Loja Online",
+  description: "Descubra as últimas tendências em moda feminina com qualidade premium e preços acessíveis.",
+  keywords: "moda feminina, roupas, vestidos, blusas, calças, acessórios",
+  author: "Moda Premium",
+  url: "https://modapremium.com.br",
+  language: "pt-BR",
+  logo: "/placeholder-logo.png",
+  favicon: "/favicon.ico",
+  ogImage: "/og-image.jpg",
+  googleAnalytics: "",
+  googleTagManager: "",
+  facebookPixel: "",
+}
 
 export default function AdminDashboard() {
+  const [config, setConfig] = useState<SEOConfig>(defaultConfig)
   const [isClient, setIsClient] = useState(false)
-  const [seoConfig, setSeoConfig] = useState<any>({})
-  const [seoScore, setSeoScore] = useState(0)
 
   useEffect(() => {
     setIsClient(true)
-
     if (typeof window !== "undefined") {
-      const config = localStorage.getItem("seo-config")
-      if (config) {
-        const parsedConfig = JSON.parse(config)
-        setSeoConfig(parsedConfig)
-        calculateSeoScore(parsedConfig)
+      const savedConfig = localStorage.getItem("seo-config")
+      if (savedConfig) {
+        setConfig(JSON.parse(savedConfig))
       }
     }
   }, [])
 
-  const calculateSeoScore = (config: any) => {
-    let score = 0
-    const checks = [
-      { key: "title", weight: 20 },
-      { key: "description", weight: 20 },
-      { key: "keywords", weight: 15 },
-      { key: "author", weight: 10 },
-      { key: "url", weight: 10 },
-      { key: "googleAnalyticsId", weight: 10 },
-      { key: "ogImage", weight: 10 },
-      { key: "language", weight: 5 },
-    ]
-
-    checks.forEach((check) => {
-      if (config[check.key] && config[check.key].trim() !== "") {
-        score += check.weight
-      }
-    })
-
-    setSeoScore(score)
-  }
-
-  const stats = [
-    {
-      title: "SEO Score",
-      value: `${seoScore}%`,
-      icon: Search,
-      color: seoScore >= 80 ? "text-green-600" : seoScore >= 60 ? "text-yellow-600" : "text-red-600",
-      bgColor: seoScore >= 80 ? "bg-green-100" : seoScore >= 60 ? "bg-yellow-100" : "bg-red-100",
-    },
-    {
-      title: "Analytics",
-      value: seoConfig.googleAnalyticsId ? "Ativo" : "Inativo",
-      icon: BarChart3,
-      color: seoConfig.googleAnalyticsId ? "text-green-600" : "text-gray-600",
-      bgColor: seoConfig.googleAnalyticsId ? "bg-green-100" : "bg-gray-100",
-    },
-    {
-      title: "Meta Tags",
-      value: seoConfig.keywords ? "Configurado" : "Pendente",
-      icon: Globe,
-      color: seoConfig.keywords ? "text-blue-600" : "text-gray-600",
-      bgColor: seoConfig.keywords ? "bg-blue-100" : "bg-gray-100",
-    },
-    {
-      title: "Performance",
-      value: "95%",
-      icon: Zap,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
-    },
-  ]
-
-  const seoChecks = [
-    {
-      label: "Título da página",
-      status: seoConfig.title && seoConfig.title.length >= 10 && seoConfig.title.length <= 60,
-      description: seoConfig.title ? `${seoConfig.title.length}/60 caracteres` : "Não configurado",
-    },
-    {
-      label: "Meta descrição",
-      status: seoConfig.description && seoConfig.description.length >= 120 && seoConfig.description.length <= 160,
-      description: seoConfig.description ? `${seoConfig.description.length}/160 caracteres` : "Não configurado",
-    },
-    {
-      label: "Palavras-chave",
-      status: seoConfig.keywords && seoConfig.keywords.split(",").length >= 3,
-      description: seoConfig.keywords ? `${seoConfig.keywords.split(",").length} palavras-chave` : "Não configurado",
-    },
-    {
-      label: "Google Analytics",
-      status: seoConfig.googleAnalyticsId,
-      description: seoConfig.googleAnalyticsId ? "Configurado" : "Não configurado",
-    },
-    {
-      label: "Imagem Open Graph",
-      status: seoConfig.ogImage,
-      description: seoConfig.ogImage ? "Configurada" : "Não configurada",
-    },
-  ]
-
   if (!isClient) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
+  // Calcular SEO Score
+  const calculateSEOScore = () => {
+    let score = 0
+    const checks = [
+      { condition: config.title.length >= 30 && config.title.length <= 60, points: 20 },
+      { condition: config.description.length >= 120 && config.description.length <= 160, points: 20 },
+      { condition: config.keywords.split(",").length >= 3, points: 15 },
+      { condition: config.googleAnalytics.length > 0, points: 15 },
+      { condition: config.ogImage.length > 0, points: 10 },
+      { condition: config.url.startsWith("https://"), points: 10 },
+      { condition: config.author.length > 0, points: 10 },
+    ]
+
+    checks.forEach((check) => {
+      if (check.condition) score += check.points
+    })
+
+    return score
+  }
+
+  const seoScore = calculateSEOScore()
+
+  const stats = [
+    {
+      name: "SEO Score",
+      value: `${seoScore}%`,
+      icon: TrendingUp,
+      color: seoScore >= 80 ? "text-green-600" : seoScore >= 60 ? "text-yellow-600" : "text-red-600",
+      bgColor: seoScore >= 80 ? "bg-green-100" : seoScore >= 60 ? "bg-yellow-100" : "bg-red-100",
+    },
+    {
+      name: "Analytics",
+      value: config.googleAnalytics ? "Ativo" : "Inativo",
+      icon: BarChart3,
+      color: config.googleAnalytics ? "text-green-600" : "text-gray-600",
+      bgColor: config.googleAnalytics ? "bg-green-100" : "bg-gray-100",
+    },
+    {
+      name: "Meta Tags",
+      value: config.title && config.description ? "Completo" : "Incompleto",
+      icon: Globe,
+      color: config.title && config.description ? "text-green-600" : "text-yellow-600",
+      bgColor: config.title && config.description ? "bg-green-100" : "bg-yellow-100",
+    },
+    {
+      name: "Performance",
+      value: "Otimizado",
+      icon: Eye,
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
+    },
+  ]
+
+  const seoChecklist = [
+    {
+      item: "Título SEO (30-60 caracteres)",
+      status: config.title.length >= 30 && config.title.length <= 60,
+      current: `${config.title.length} caracteres`,
+    },
+    {
+      item: "Meta Description (120-160 caracteres)",
+      status: config.description.length >= 120 && config.description.length <= 160,
+      current: `${config.description.length} caracteres`,
+    },
+    {
+      item: "Palavras-chave (mínimo 3)",
+      status: config.keywords.split(",").length >= 3,
+      current: `${config.keywords.split(",").length} palavras`,
+    },
+    {
+      item: "Google Analytics configurado",
+      status: config.googleAnalytics.length > 0,
+      current: config.googleAnalytics ? "Configurado" : "Não configurado",
+    },
+    {
+      item: "Imagem Open Graph",
+      status: config.ogImage.length > 0,
+      current: config.ogImage ? "Configurada" : "Não configurada",
+    },
+    {
+      item: "URL com HTTPS",
+      status: config.url.startsWith("https://"),
+      current: config.url.startsWith("https://") ? "Seguro" : "Inseguro",
+    },
+  ]
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Visão geral das configurações e performance do seu site</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">Visão geral das configurações do seu site</p>
+        </div>
+        <Link href="/admin/seo">
+          <Button>
+            <Settings className="mr-2 h-4 w-4" />
+            Configurar SEO
+          </Button>
+        </Link>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon
-          return (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                  </div>
-                  <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
+        {stats.map((stat) => (
+          <Card key={stat.name}>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* SEO Score */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Search className="h-5 w-5 mr-2" />
-              Score SEO
-            </CardTitle>
+            <CardTitle>Score SEO</CardTitle>
+            <CardDescription>Otimização atual do seu site para mecanismos de busca</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Score Atual</span>
-                <span className="text-2xl font-bold">{seoScore}%</span>
+                <span
+                  className={`text-2xl font-bold ${
+                    seoScore >= 80 ? "text-green-600" : seoScore >= 60 ? "text-yellow-600" : "text-red-600"
+                  }`}
+                >
+                  {seoScore}%
+                </span>
               </div>
-
               <Progress value={seoScore} className="h-2" />
-
               <div className="text-sm text-gray-600">
-                {seoScore >= 80 ? (
-                  <div className="flex items-center text-green-600">
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Excelente otimização SEO
-                  </div>
-                ) : seoScore >= 60 ? (
-                  <div className="flex items-center text-yellow-600">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    Boa otimização, pode melhorar
-                  </div>
-                ) : (
-                  <div className="flex items-center text-red-600">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    Precisa de otimização
-                  </div>
-                )}
+                {seoScore >= 80
+                  ? "Excelente! Seu SEO está bem otimizado."
+                  : seoScore >= 60
+                    ? "Bom, mas pode melhorar algumas configurações."
+                    : "Precisa de melhorias significativas no SEO."}
               </div>
-
-              <Link href="/admin/seo">
-                <Button className="w-full mt-4">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Configurar SEO
-                </Button>
-              </Link>
             </div>
           </CardContent>
         </Card>
 
-        {/* SEO Checklist */}
+        {/* Current Config */}
         <Card>
           <CardHeader>
-            <CardTitle>Checklist SEO</CardTitle>
+            <CardTitle>Configuração Atual</CardTitle>
+            <CardDescription>Informações principais do seu site</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {seoChecks.map((check, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    {check.status ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <AlertCircle className="h-5 w-5 text-red-600" />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium">{check.label}</p>
-                      <p className="text-xs text-gray-500">{check.description}</p>
-                    </div>
-                  </div>
-                  <Badge variant={check.status ? "default" : "secondary"}>{check.status ? "OK" : "Pendente"}</Badge>
-                </div>
-              ))}
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Título</p>
+                <p className="text-sm text-gray-900 truncate">{config.title}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Empresa</p>
+                <p className="text-sm text-gray-900">{config.author}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">URL</p>
+                <p className="text-sm text-gray-900 truncate">{config.url}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Analytics</p>
+                <Badge variant={config.googleAnalytics ? "default" : "secondary"}>
+                  {config.googleAnalytics ? "Ativo" : "Inativo"}
+                </Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Current Configuration */}
+      {/* SEO Checklist */}
       <Card>
         <CardHeader>
-          <CardTitle>Configuração Atual</CardTitle>
+          <CardTitle>Checklist SEO</CardTitle>
+          <CardDescription>Itens importantes para otimização do seu site</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Informações Básicas</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Título:</span>
-                  <span className="font-medium">{seoConfig.title || "Não configurado"}</span>
+          <div className="space-y-4">
+            {seoChecklist.map((check, index) => (
+              <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="flex items-center space-x-3">
+                  {check.status ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-yellow-600" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{check.item}</p>
+                    <p className="text-xs text-gray-600">{check.current}</p>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Autor:</span>
-                  <span className="font-medium">{seoConfig.author || "Não configurado"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">URL:</span>
-                  <span className="font-medium">{seoConfig.url || "Não configurado"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Idioma:</span>
-                  <span className="font-medium">{seoConfig.language || "pt-BR"}</span>
-                </div>
+                <Badge variant={check.status ? "default" : "secondary"}>{check.status ? "OK" : "Pendente"}</Badge>
               </div>
-            </div>
-
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Analytics</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Google Analytics:</span>
-                  <Badge variant={seoConfig.googleAnalyticsId ? "default" : "secondary"}>
-                    {seoConfig.googleAnalyticsId ? "Ativo" : "Inativo"}
-                  </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tag Manager:</span>
-                  <Badge variant={seoConfig.googleTagManagerId ? "default" : "secondary"}>
-                    {seoConfig.googleTagManagerId ? "Ativo" : "Inativo"}
-                  </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Facebook Pixel:</span>
-                  <Badge variant={seoConfig.facebookPixelId ? "default" : "secondary"}>
-                    {seoConfig.facebookPixelId ? "Ativo" : "Inativo"}
-                  </Badge>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
-
-          {seoConfig.description && (
-            <div className="mt-6">
-              <h4 className="font-medium text-gray-900 mb-2">Descrição</h4>
-              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{seoConfig.description}</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -287,25 +282,24 @@ export default function AdminDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Ações Rápidas</CardTitle>
+          <CardDescription>Configurações importantes para o seu site</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link href="/admin/seo">
-              <Button variant="outline" className="w-full bg-transparent">
-                <Globe className="h-4 w-4 mr-2" />
+              <Button variant="outline" className="w-full justify-start bg-transparent">
+                <Globe className="mr-2 h-4 w-4" />
                 Configurar SEO
               </Button>
             </Link>
-
-            <Link href="/" target="_blank">
-              <Button variant="outline" className="w-full bg-transparent">
-                <Eye className="h-4 w-4 mr-2" />
+            <Link href="/">
+              <Button variant="outline" className="w-full justify-start bg-transparent">
+                <Eye className="mr-2 h-4 w-4" />
                 Visualizar Site
               </Button>
             </Link>
-
-            <Button variant="outline" className="w-full bg-transparent" disabled>
-              <BarChart3 className="h-4 w-4 mr-2" />
+            <Button variant="outline" className="w-full justify-start bg-transparent" disabled>
+              <BarChart3 className="mr-2 h-4 w-4" />
               Relatórios (Em breve)
             </Button>
           </div>

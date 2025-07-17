@@ -13,7 +13,7 @@ const nextConfig = {
     domains: ['localhost'],
   },
   experimental: {
-    optimizePackageImports: ['lucide-react']
+    optimizePackageImports: ['lucide-react'],
   },
   webpack: (config) => {
     config.resolve.fallback = {
@@ -21,7 +21,7 @@ const nextConfig = {
       fs: false,
     }
     return config
-  }
+  },
 }
 
 export default nextConfig

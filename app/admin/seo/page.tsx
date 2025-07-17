@@ -1,51 +1,55 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useRouter } from "next/navigation"
+import { Save, Eye, CheckCircle, AlertCircle, Globe, BarChart3, ImageIcon, LinkIcon } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Save, Globe, Search, BarChart3, CheckCircle, AlertCircle } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { toast } from "sonner"
 
-interface SeoConfig {
+interface SEOConfig {
   title: string
-  author: string
   description: string
   keywords: string
+  author: string
   url: string
   language: string
+  logo: string
   favicon: string
   ogImage: string
-  googleAnalyticsId: string
-  googleTagManagerId: string
-  facebookPixelId: string
+  googleAnalytics: string
+  googleTagManager: string
+  facebookPixel: string
 }
 
-export default function SeoConfigPage() {
+const defaultConfig: SEOConfig = {
+  title: "Moda Feminina Premium - Loja Online",
+  description: "Descubra as últimas tendências em moda feminina com qualidade premium e preços acessíveis.",
+  keywords: "moda feminina, roupas, vestidos, blusas, calças, acessórios",
+  author: "Moda Premium",
+  url: "https://modapremium.com.br",
+  language: "pt-BR",
+  logo: "/placeholder-logo.png",
+  favicon: "/favicon.ico",
+  ogImage: "/og-image.jpg",
+  googleAnalytics: "",
+  googleTagManager: "",
+  facebookPixel: "",
+}
+
+export default function SEOConfigPage() {
+  const [config, setConfig] = useState<SEOConfig>(defaultConfig)
   const [isClient, setIsClient] = useState(false)
-  const [config, setConfig] = useState<SeoConfig>({
-    title: "",
-    author: "",
-    description: "",
-    keywords: "",
-    url: "",
-    language: "pt-BR",
-    favicon: "/favicon.ico",
-    ogImage: "",
-    googleAnalyticsId: "",
-    googleTagManagerId: "",
-    facebookPixelId: "",
-  })
   const [isSaving, setIsSaving] = useState(false)
-  const [saveMessage, setSaveMessage] = useState("")
+  const router = useRouter()
 
   useEffect(() => {
     setIsClient(true)
-
     if (typeof window !== "undefined") {
       const savedConfig = localStorage.getItem("seo-config")
       if (savedConfig) {
@@ -61,7 +65,7 @@ export default function SeoConfigPage() {
       if (typeof window !== "undefined") {
         localStorage.setItem("seo-config", JSON.stringify(config))
 
-        // Dispatch custom event to update other components
+        // Disparar evento customizado para atualizar outros componentes
         window.dispatchEvent(
           new CustomEvent("seo-config-updated", {
             detail: config,
@@ -69,36 +73,33 @@ export default function SeoConfigPage() {
         )
       }
 
-      setSaveMessage("Configurações salvas com sucesso!")
-      setTimeout(() => setSaveMessage(""), 3000)
+      toast.success("Configurações salvas com sucesso!")
+
+      // Pequeno delay para mostrar o toast
+      setTimeout(() => {
+        router.push("/admin")
+      }, 1000)
     } catch (error) {
-      setSaveMessage("Erro ao salvar configurações")
+      toast.error("Erro ao salvar configurações")
     } finally {
       setIsSaving(false)
     }
   }
 
-  const handleInputChange = (field: keyof SeoConfig, value: string) => {
-    setConfig((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const getSeoScore = () => {
+  const calculateSEOScore = () => {
     let score = 0
     const checks = [
-      { key: "title", weight: 20, valid: config.title.length >= 10 && config.title.length <= 60 },
-      { key: "description", weight: 20, valid: config.description.length >= 120 && config.description.length <= 160 },
-      { key: "keywords", weight: 15, valid: config.keywords.split(",").length >= 3 },
-      { key: "author", weight: 10, valid: config.author.length > 0 },
-      { key: "url", weight: 10, valid: config.url.length > 0 },
-      { key: "googleAnalyticsId", weight: 10, valid: config.googleAnalyticsId.length > 0 },
-      { key: "ogImage", weight: 10, valid: config.ogImage.length > 0 },
-      { key: "language", weight: 5, valid: config.language.length > 0 },
+      { condition: config.title.length >= 30 && config.title.length <= 60, points: 20 },
+      { condition: config.description.length >= 120 && config.description.length <= 160, points: 20 },
+      { condition: config.keywords.split(",").length >= 3, points: 15 },
+      { condition: config.googleAnalytics.length > 0, points: 15 },
+      { condition: config.ogImage.length > 0, points: 10 },
+      { condition: config.url.startsWith("https://"), points: 10 },
+      { condition: config.author.length > 0, points: 10 },
     ]
 
     checks.forEach((check) => {
-      if (check.valid) {
-        score += check.weight
-      }
+      if (check.condition) score += check.points
     })
 
     return score
@@ -106,97 +107,112 @@ export default function SeoConfigPage() {
 
   if (!isClient) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
-  const seoScore = getSeoScore()
+  const seoScore = calculateSEOScore()
+
+  const seoChecks = [
+    {
+      label: "Título SEO",
+      status: config.title.length >= 30 && config.title.length <= 60,
+      message: `${config.title.length}/60 caracteres`,
+    },
+    {
+      label: "Meta Description",
+      status: config.description.length >= 120 && config.description.length <= 160,
+      message: `${config.description.length}/160 caracteres`,
+    },
+    {
+      label: "Palavras-chave",
+      status: config.keywords.split(",").length >= 3,
+      message: `${config.keywords.split(",").length} palavras`,
+    },
+    {
+      label: "Google Analytics",
+      status: config.googleAnalytics.length > 0,
+      message: config.googleAnalytics ? "Configurado" : "Não configurado",
+    },
+  ]
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Configurações SEO</h1>
-          <p className="text-gray-600 mt-2">Configure o título, descrição e otimizações SEO do seu site</p>
+          <h1 className="text-2xl font-bold text-gray-900">Configurações de SEO</h1>
+          <p className="text-gray-600">Configure o título, descrição e otimizações para mecanismos de busca</p>
         </div>
-
-        <div className="flex items-center space-x-4">
-          <Badge variant={seoScore >= 80 ? "default" : seoScore >= 60 ? "secondary" : "destructive"}>
-            SEO Score: {seoScore}%
-          </Badge>
-
+        <div className="flex items-center space-x-3">
+          <Button variant="outline" onClick={() => router.push("/")}>
+            <Eye className="mr-2 h-4 w-4" />
+            Visualizar Site
+          </Button>
           <Button onClick={handleSave} disabled={isSaving}>
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
             {isSaving ? "Salvando..." : "Salvar"}
           </Button>
         </div>
       </div>
 
-      {saveMessage && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>{saveMessage}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Configuration */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Formulário Principal */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
+          {/* Informações Básicas */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Globe className="h-5 w-5 mr-2" />
+                <Globe className="mr-2 h-5 w-5" />
                 Informações Básicas
               </CardTitle>
+              <CardDescription>Configure as informações principais do seu site</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="title">Título da Página *</Label>
+                <Label htmlFor="title">Título da Página</Label>
                 <Input
                   id="title"
                   value={config.title}
-                  onChange={(e) => handleInputChange("title", e.target.value)}
-                  placeholder="Ex: Loja de Moda Feminina - As Melhores Tendências"
+                  onChange={(e) => setConfig({ ...config, title: e.target.value })}
+                  placeholder="Título principal do seu site"
                   maxLength={60}
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Ideal: 10-60 caracteres</span>
-                  <span className={config.title.length > 60 ? "text-red-500" : "text-gray-500"}>
-                    {config.title.length}/60
-                  </span>
-                </div>
+                <p className="text-xs text-gray-500 mt-1">{config.title.length}/60 caracteres (recomendado: 30-60)</p>
               </div>
 
               <div>
-                <Label htmlFor="author">Autor/Empresa *</Label>
+                <Label htmlFor="author">Nome da Empresa/Autor</Label>
                 <Input
                   id="author"
                   value={config.author}
-                  onChange={(e) => handleInputChange("author", e.target.value)}
-                  placeholder="Ex: Moda Bella Ltda"
+                  onChange={(e) => setConfig({ ...config, author: e.target.value })}
+                  placeholder="Nome da sua empresa ou marca"
                 />
               </div>
 
               <div>
-                <Label htmlFor="description">Descrição SEO *</Label>
+                <Label htmlFor="description">Descrição SEO</Label>
                 <Textarea
                   id="description"
                   value={config.description}
-                  onChange={(e) => handleInputChange("description", e.target.value)}
-                  placeholder="Descreva seu negócio de forma atrativa para aparecer nos resultados do Google..."
-                  maxLength={160}
+                  onChange={(e) => setConfig({ ...config, description: e.target.value })}
+                  placeholder="Descrição que aparecerá nos resultados de busca"
                   rows={3}
+                  maxLength={160}
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Ideal: 120-160 caracteres</span>
-                  <span className={config.description.length > 160 ? "text-red-500" : "text-gray-500"}>
-                    {config.description.length}/160
-                  </span>
-                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {config.description.length}/160 caracteres (recomendado: 120-160)
+                </p>
               </div>
 
               <div>
@@ -204,20 +220,22 @@ export default function SeoConfigPage() {
                 <Input
                   id="keywords"
                   value={config.keywords}
-                  onChange={(e) => handleInputChange("keywords", e.target.value)}
-                  placeholder="moda feminina, roupas, vestidos, blusas, calças"
+                  onChange={(e) => setConfig({ ...config, keywords: e.target.value })}
+                  placeholder="palavra1, palavra2, palavra3"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Separe as palavras-chave por vírgula. Mínimo 3 palavras recomendado.
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Separe as palavras-chave com vírgulas</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Technical Settings */}
+          {/* Configurações Técnicas */}
           <Card>
             <CardHeader>
-              <CardTitle>Configurações Técnicas</CardTitle>
+              <CardTitle className="flex items-center">
+                <LinkIcon className="mr-2 h-5 w-5" />
+                Configurações Técnicas
+              </CardTitle>
+              <CardDescription>URLs, idioma e configurações avançadas</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -225,8 +243,8 @@ export default function SeoConfigPage() {
                 <Input
                   id="url"
                   value={config.url}
-                  onChange={(e) => handleInputChange("url", e.target.value)}
-                  placeholder="https://www.seusite.com.br"
+                  onChange={(e) => setConfig({ ...config, url: e.target.value })}
+                  placeholder="https://seusite.com.br"
                 />
               </div>
 
@@ -235,8 +253,30 @@ export default function SeoConfigPage() {
                 <Input
                   id="language"
                   value={config.language}
-                  onChange={(e) => handleInputChange("language", e.target.value)}
+                  onChange={(e) => setConfig({ ...config, language: e.target.value })}
                   placeholder="pt-BR"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Imagens e Assets */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <ImageIcon className="mr-2 h-5 w-5" />
+                Imagens e Assets
+              </CardTitle>
+              <CardDescription>Configure logo, favicon e imagem Open Graph</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="logo">Logo</Label>
+                <Input
+                  id="logo"
+                  value={config.logo}
+                  onChange={(e) => setConfig({ ...config, logo: e.target.value })}
+                  placeholder="/logo.png"
                 />
               </div>
 
@@ -245,7 +285,7 @@ export default function SeoConfigPage() {
                 <Input
                   id="favicon"
                   value={config.favicon}
-                  onChange={(e) => handleInputChange("favicon", e.target.value)}
+                  onChange={(e) => setConfig({ ...config, favicon: e.target.value })}
                   placeholder="/favicon.ico"
                 />
               </div>
@@ -255,11 +295,11 @@ export default function SeoConfigPage() {
                 <Input
                   id="ogImage"
                   value={config.ogImage}
-                  onChange={(e) => handleInputChange("ogImage", e.target.value)}
+                  onChange={(e) => setConfig({ ...config, ogImage: e.target.value })}
                   placeholder="/og-image.jpg"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Imagem que aparece quando compartilham seu site nas redes sociais (1200x630px)
+                  Imagem que aparece quando o site é compartilhado (1200x630px)
                 </p>
               </div>
             </CardContent>
@@ -269,37 +309,38 @@ export default function SeoConfigPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <BarChart3 className="h-5 w-5 mr-2" />
+                <BarChart3 className="mr-2 h-5 w-5" />
                 Analytics e Tracking
               </CardTitle>
+              <CardDescription>Configure Google Analytics, Tag Manager e Facebook Pixel</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="googleAnalyticsId">Google Analytics ID</Label>
+                <Label htmlFor="googleAnalytics">Google Analytics ID</Label>
                 <Input
-                  id="googleAnalyticsId"
-                  value={config.googleAnalyticsId}
-                  onChange={(e) => handleInputChange("googleAnalyticsId", e.target.value)}
+                  id="googleAnalytics"
+                  value={config.googleAnalytics}
+                  onChange={(e) => setConfig({ ...config, googleAnalytics: e.target.value })}
                   placeholder="G-XXXXXXXXXX"
                 />
               </div>
 
               <div>
-                <Label htmlFor="googleTagManagerId">Google Tag Manager ID</Label>
+                <Label htmlFor="googleTagManager">Google Tag Manager ID</Label>
                 <Input
-                  id="googleTagManagerId"
-                  value={config.googleTagManagerId}
-                  onChange={(e) => handleInputChange("googleTagManagerId", e.target.value)}
+                  id="googleTagManager"
+                  value={config.googleTagManager}
+                  onChange={(e) => setConfig({ ...config, googleTagManager: e.target.value })}
                   placeholder="GTM-XXXXXXX"
                 />
               </div>
 
               <div>
-                <Label htmlFor="facebookPixelId">Facebook Pixel ID</Label>
+                <Label htmlFor="facebookPixel">Facebook Pixel ID</Label>
                 <Input
-                  id="facebookPixelId"
-                  value={config.facebookPixelId}
-                  onChange={(e) => handleInputChange("facebookPixelId", e.target.value)}
+                  id="facebookPixel"
+                  value={config.facebookPixel}
+                  onChange={(e) => setConfig({ ...config, facebookPixel: e.target.value })}
                   placeholder="123456789012345"
                 />
               </div>
@@ -307,106 +348,73 @@ export default function SeoConfigPage() {
           </Card>
         </div>
 
-        {/* Preview and Score */}
+        {/* Sidebar com Preview e Score */}
         <div className="space-y-6">
-          {/* Google Preview */}
+          {/* SEO Score */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Search className="h-5 w-5 mr-2" />
-                Preview Google
-              </CardTitle>
+              <CardTitle>Score SEO</CardTitle>
+              <CardDescription>Otimização atual</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="border rounded-lg p-4 bg-white">
-                <div className="text-blue-600 text-lg hover:underline cursor-pointer">
-                  {config.title || "Título da sua página"}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Score</span>
+                  <span
+                    className={`text-2xl font-bold ${
+                      seoScore >= 80 ? "text-green-600" : seoScore >= 60 ? "text-yellow-600" : "text-red-600"
+                    }`}
+                  >
+                    {seoScore}%
+                  </span>
                 </div>
-                <div className="text-green-700 text-sm mt-1">{config.url || "https://www.seusite.com.br"}</div>
-                <div className="text-gray-600 text-sm mt-2">
-                  {config.description || "Descrição da sua página aparecerá aqui nos resultados de busca do Google..."}
-                </div>
+                <Progress value={seoScore} className="h-2" />
               </div>
             </CardContent>
           </Card>
 
-          {/* SEO Checklist */}
+          {/* Checklist */}
           <Card>
             <CardHeader>
               <CardTitle>Checklist SEO</CardTitle>
+              <CardDescription>Status das configurações</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Título (10-60 chars)</span>
-                  {config.title.length >= 10 && config.title.length <= 60 ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Descrição (120-160 chars)</span>
-                  {config.description.length >= 120 && config.description.length <= 160 ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Palavras-chave (min 3)</span>
-                  {config.keywords.split(",").length >= 3 && config.keywords.trim() ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Google Analytics</span>
-                  {config.googleAnalyticsId ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Imagem Open Graph</span>
-                  {config.ogImage ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                </div>
-              </div>
-
-              <Separator className="my-4" />
-
-              <div className="text-center">
-                <div className="text-2xl font-bold mb-2">{seoScore}%</div>
-                <div className="text-sm text-gray-600">Score SEO</div>
-                {seoScore >= 80 && <Badge className="mt-2 bg-green-100 text-green-800">Excelente</Badge>}
-                {seoScore >= 60 && seoScore < 80 && <Badge className="mt-2 bg-yellow-100 text-yellow-800">Bom</Badge>}
-                {seoScore < 60 && <Badge className="mt-2 bg-red-100 text-red-800">Precisa melhorar</Badge>}
+                {seoChecks.map((check, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      {check.status ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      )}
+                      <span className="text-sm">{check.label}</span>
+                    </div>
+                    <Badge variant={check.status ? "default" : "secondary"} className="text-xs">
+                      {check.status ? "OK" : "Pendente"}
+                    </Badge>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Quick Tips */}
+          {/* Preview do Google */}
           <Card>
             <CardHeader>
-              <CardTitle>Dicas Rápidas</CardTitle>
+              <CardTitle>Preview do Google</CardTitle>
+              <CardDescription>Como aparece na busca</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 text-sm text-gray-600">
-                <p>• Use palavras-chave no título</p>
-                <p>• Descrição deve ser atrativa</p>
-                <p>• Configure o Google Analytics</p>
-                <p>• Adicione imagem Open Graph</p>
-                <p>• Teste em dispositivos móveis</p>
+              <div className="border rounded-lg p-3 bg-white">
+                <div className="text-blue-600 text-lg hover:underline cursor-pointer truncate">
+                  {config.title || "Título da página"}
+                </div>
+                <div className="text-green-700 text-sm truncate">{config.url || "https://seusite.com.br"}</div>
+                <div className="text-gray-600 text-sm mt-1 line-clamp-2">
+                  {config.description || "Descrição da página que aparecerá nos resultados de busca do Google."}
+                </div>
               </div>
             </CardContent>
           </Card>
