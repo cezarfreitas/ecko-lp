@@ -29,6 +29,10 @@
           {
             "key": "PORT",
             "value": "3000"
+          },
+          {
+            "key": "HOSTNAME",
+            "value": "0.0.0.0"
           }
         ],
         "mounts": [],
@@ -45,50 +49,14 @@
             "port": 3000,
             "https": true
           }
-        ]
-      }
-    },
-    {
-      "type": "app",
-      "data": {
-        "projectName": "landing-page-cms",
-        "serviceName": "nginx",
-        "source": {
-          "type": "image",
-          "image": "nginx:alpine"
-        },
-        "deploy": {
-          "replicas": 1,
-          "command": null,
-          "zeroDowntime": true
-        },
-        "env": [],
-        "mounts": [
-          {
-            "type": "file",
-            "content": "# Nginx configuration will be mounted here",
-            "mountPath": "/etc/nginx/nginx.conf"
-          }
         ],
-        "ports": [
-          {
-            "published": 80,
-            "target": 80,
-            "protocol": "tcp"
-          },
-          {
-            "published": 443,
-            "target": 443,
-            "protocol": "tcp"
-          }
-        ],
-        "domains": [
-          {
-            "host": "yourdomain.com",
-            "port": 80,
-            "https": true
-          }
-        ]
+        "healthCheck": {
+          "test": ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"],
+          "interval": "30s",
+          "timeout": "10s",
+          "retries": 3,
+          "startPeriod": "40s"
+        }
       }
     }
   ]

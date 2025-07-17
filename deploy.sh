@@ -3,12 +3,13 @@
 # Deploy script for EasyPanel VPS
 set -e
 
-echo "🚀 Iniciando deploy da Landing Page..."
+echo "🚀 Iniciando deploy da Landing Page CMS..."
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
@@ -37,13 +38,13 @@ fi
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
-    log_error "Docker não está instalado. Execute ./setup.sh primeiro."
+    log_error "Docker não encontrado. Instale o Docker primeiro."
     exit 1
 fi
 
 # Check if Docker Compose is installed
 if ! command -v docker-compose &> /dev/null; then
-    log_error "Docker Compose não está instalado. Execute ./setup.sh primeiro."
+    log_error "Docker Compose não encontrado. Instale o Docker Compose primeiro."
     exit 1
 fi
 
@@ -56,57 +57,61 @@ log_info "Removendo imagens antigas..."
 docker image prune -f
 
 # Build and start containers
-log_info "Construindo e iniciando containers..."
+log_info "Construindo e iniciando aplicação..."
 docker-compose up -d --build
 
 # Wait for containers to be healthy
-log_info "Aguardando containers ficarem saudáveis..."
+log_info "Aguardando aplicação ficar saudável..."
 sleep 30
 
 # Check container health
-if docker-compose ps | grep -q "Up (healthy)"; then
-    log_info "✅ Containers estão saudáveis!"
+log_info "Verificando status dos containers..."
+docker-compose ps
+
+# Test application
+if curl -f http://localhost:3000 > /dev/null 2>&1; then
+    log_info "✅ Aplicação está respondendo!"
 else
-    log_warn "⚠️  Alguns containers podem não estar saudáveis. Verificando logs..."
-    docker-compose logs --tail=50
+    log_warn "⚠️  Aplicação pode não estar pronta. Verificando logs..."
+    docker-compose logs --tail=20 app
 fi
 
-# Setup SSL if not exists
-if [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
-    log_info "Configurando SSL com Let's Encrypt..."
-    sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
+# Setup SSL if domain is configured
+if [ "$DOMAIN" != "yourdomain.com" ]; then
+    log_info "Configurando SSL para $DOMAIN..."
+    if command -v certbot &> /dev/null; then
+        sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive || log_warn "Falha ao configurar SSL"
+    else
+        log_warn "Certbot não encontrado. Configure SSL manualmente."
+    fi
 fi
 
 # Reload Nginx
-log_info "Recarregando Nginx..."
-docker-compose exec nginx nginx -s reload
-
-# Show status
-log_info "Status dos containers:"
-docker-compose ps
+if [ "$DOMAIN" != "yourdomain.com" ]; then
+    log_info "Recarregando Nginx..."
+    docker-compose exec nginx nginx -s reload
+fi
 
 # Show logs
 log_info "Últimos logs da aplicação:"
 docker-compose logs --tail=20 app
-
-# Performance check
-log_info "Verificando performance..."
-if command -v curl &> /dev/null; then
-    response_time=$(curl -o /dev/null -s -w '%{time_total}\n' http://localhost)
-    log_info "Tempo de resposta: ${response_time}s"
-fi
 
 # Cleanup
 log_info "Limpando recursos não utilizados..."
 docker system prune -f
 
 log_info "🎉 Deploy concluído com sucesso!"
-log_info "🌐 Site disponível em: https://$DOMAIN"
-log_info "⚙️  Admin disponível em: https://$DOMAIN/admin"
+log_info "🌐 Aplicação: http://localhost:3000"
+log_info "⚙️  Admin: http://localhost:3000/admin"
+
+if [ "$DOMAIN" != "yourdomain.com" ]; then
+    log_info "🌐 Produção: https://$DOMAIN"
+    log_info "⚙️  Admin: https://$DOMAIN/admin"
+fi
 
 echo ""
-echo "📊 Comandos úteis:"
-echo "  docker-compose logs -f app     # Ver logs em tempo real"
-echo "  docker-compose restart app    # Reiniciar aplicação"
-echo "  docker-compose down           # Parar todos os containers"
-echo "  docker-compose up -d          # Iniciar containers"
+echo "📋 Comandos úteis:"
+echo "  docker-compose logs -f app    # Ver logs"
+echo "  docker-compose restart app   # Reiniciar"
+echo "  docker-compose down          # Parar"
+echo "  docker-compose up -d         # Iniciar"
