@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Globe, Settings, Eye, ExternalLink } from "lucide-react"
-import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
+import { Search, Globe, BarChart3, Eye, Settings, CheckCircle, AlertCircle, TrendingUp } from "lucide-react"
 
 interface SiteConfig {
   title: string
@@ -12,11 +13,6 @@ interface SiteConfig {
   keywords: string
   author: string
   url: string
-  logo: string
-  favicon: string
-  language: string
-  ogImage: string
-  twitterCard: string
   googleAnalytics: string
   googleTagManager: string
   facebookPixel: string
@@ -29,11 +25,6 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   keywords: "moda feminina, roupas elegantes, vestidos, blusas, calças, moda moderna, estilo feminino",
   author: "Sua Loja de Moda",
   url: "https://seusite.com.br",
-  logo: "/placeholder-logo.png",
-  favicon: "/favicon.ico",
-  language: "pt-BR",
-  ogImage: "/elegant-modern-fashion.png",
-  twitterCard: "summary_large_image",
   googleAnalytics: "",
   googleTagManager: "",
   facebookPixel: "",
@@ -45,10 +36,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     setIsClient(true)
-    loadSiteConfig()
+    loadConfig()
   }, [])
 
-  const loadSiteConfig = () => {
+  const loadConfig = () => {
     if (typeof window !== "undefined") {
       try {
         const savedConfig = localStorage.getItem("site-config")
@@ -61,69 +52,198 @@ export default function AdminDashboard() {
     }
   }
 
+  const getSEOScore = () => {
+    let score = 0
+    const issues = []
+
+    // Verificar título
+    if (siteConfig.title && siteConfig.title.length >= 30 && siteConfig.title.length <= 60) {
+      score += 25
+    } else {
+      issues.push("Título deve ter entre 30-60 caracteres")
+    }
+
+    // Verificar descrição
+    if (siteConfig.description && siteConfig.description.length >= 120 && siteConfig.description.length <= 160) {
+      score += 25
+    } else {
+      issues.push("Descrição deve ter entre 120-160 caracteres")
+    }
+
+    // Verificar palavras-chave
+    if (siteConfig.keywords && siteConfig.keywords.split(",").length >= 3) {
+      score += 25
+    } else {
+      issues.push("Adicione pelo menos 3 palavras-chave")
+    }
+
+    // Verificar analytics
+    if (siteConfig.googleAnalytics || siteConfig.googleTagManager) {
+      score += 25
+    } else {
+      issues.push("Configure Google Analytics ou Tag Manager")
+    }
+
+    return { score, issues }
+  }
+
   if (!isClient) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Carregando...</p>
+          <p className="mt-2 text-gray-600">Carregando dashboard...</p>
         </div>
       </div>
     )
   }
 
-  const stats = [
-    {
-      title: "Título da Página",
-      value: siteConfig.title,
-      icon: Globe,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-    },
-    {
-      title: "Descrição SEO",
-      value: `${siteConfig.description.length} caracteres`,
-      icon: Settings,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-    },
-    {
-      title: "Palavras-chave",
-      value: siteConfig.keywords.split(",").length + " palavras",
-      icon: Eye,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-    },
-  ]
+  const { score, issues } = getSEOScore()
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Gerencie as configurações de SEO e título da sua landing page</p>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 mt-2">Gerencie as configurações da sua landing page</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon
-          return (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-lg font-semibold text-gray-900 truncate max-w-[200px]">{stat.value}</p>
-                  </div>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Globe className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Site Status</p>
+                <p className="text-2xl font-bold text-gray-900">Online</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <BarChart3 className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">SEO Score</p>
+                <p className="text-2xl font-bold text-gray-900">{score}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Search className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Palavras-chave</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {siteConfig.keywords ? siteConfig.keywords.split(",").length : 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Analytics</p>
+                <p className="text-2xl font-bold text-gray-900">{siteConfig.googleAnalytics ? "Ativo" : "Inativo"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Current Configuration */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Settings className="w-5 h-5 mr-2" />
+              Configuração Atual
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Título</p>
+              <p className="text-gray-900 truncate">{siteConfig.title}</p>
+              <p className="text-xs text-gray-500">{siteConfig.title.length} caracteres</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Descrição</p>
+              <p className="text-gray-900 text-sm line-clamp-2">{siteConfig.description}</p>
+              <p className="text-xs text-gray-500">{siteConfig.description.length} caracteres</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Autor</p>
+              <p className="text-gray-900">{siteConfig.author}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">URL</p>
+              <p className="text-gray-900 truncate">{siteConfig.url}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2" />
+              Status SEO
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Score Geral</span>
+                <Badge variant={score >= 75 ? "default" : score >= 50 ? "secondary" : "destructive"}>{score}%</Badge>
+              </div>
+
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    score >= 75 ? "bg-green-500" : score >= 50 ? "bg-yellow-500" : "bg-red-500"
+                  }`}
+                  style={{ width: `${score}%` }}
+                />
+              </div>
+
+              {issues.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-600">Melhorias sugeridas:</p>
+                  {issues.map((issue, index) => (
+                    <div key={index} className="flex items-start">
+                      <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 mr-2 flex-shrink-0" />
+                      <p className="text-sm text-gray-600">{issue}</p>
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+              )}
+
+              {score === 100 && (
+                <div className="flex items-center text-green-600">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  <p className="text-sm font-medium">SEO otimizado!</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
@@ -131,60 +251,67 @@ export default function AdminDashboard() {
         <CardHeader>
           <CardTitle>Ações Rápidas</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link href="/admin/seo">
               <Button className="w-full justify-start bg-transparent" variant="outline">
-                <Globe className="w-4 h-4 mr-2" />
-                Configurar SEO e Título
+                <Search className="w-4 h-4 mr-2" />
+                Configurar SEO
               </Button>
             </Link>
             <Link href="/" target="_blank">
               <Button className="w-full justify-start bg-transparent" variant="outline">
-                <ExternalLink className="w-4 h-4 mr-2" />
+                <Eye className="w-4 h-4 mr-2" />
                 Visualizar Site
               </Button>
             </Link>
+            <Button
+              className="w-full justify-start bg-transparent"
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Recarregar Dados
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Current Configuration Preview */}
+      {/* Analytics Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Configuração Atual</CardTitle>
+          <CardTitle>Status do Analytics</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Informações Básicas</h3>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="font-medium">Título:</span>
-                  <p className="text-gray-600 mt-1">{siteConfig.title}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Autor:</span>
-                  <p className="text-gray-600 mt-1">{siteConfig.author}</p>
-                </div>
-                <div>
-                  <span className="font-medium">URL:</span>
-                  <p className="text-gray-600 mt-1">{siteConfig.url}</p>
-                </div>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <p className="font-medium">Google Analytics</p>
+                <p className="text-sm text-gray-600">{siteConfig.googleAnalytics || "Não configurado"}</p>
               </div>
+              <Badge variant={siteConfig.googleAnalytics ? "default" : "secondary"}>
+                {siteConfig.googleAnalytics ? "Ativo" : "Inativo"}
+              </Badge>
             </div>
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">SEO</h3>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="font-medium">Descrição:</span>
-                  <p className="text-gray-600 mt-1 line-clamp-2">{siteConfig.description}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Palavras-chave:</span>
-                  <p className="text-gray-600 mt-1 line-clamp-2">{siteConfig.keywords}</p>
-                </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <p className="font-medium">Google Tag Manager</p>
+                <p className="text-sm text-gray-600">{siteConfig.googleTagManager || "Não configurado"}</p>
               </div>
+              <Badge variant={siteConfig.googleTagManager ? "default" : "secondary"}>
+                {siteConfig.googleTagManager ? "Ativo" : "Inativo"}
+              </Badge>
+            </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <p className="font-medium">Facebook Pixel</p>
+                <p className="text-sm text-gray-600">{siteConfig.facebookPixel || "Não configurado"}</p>
+              </div>
+              <Badge variant={siteConfig.facebookPixel ? "default" : "secondary"}>
+                {siteConfig.facebookPixel ? "Ativo" : "Inativo"}
+              </Badge>
             </div>
           </div>
         </CardContent>
