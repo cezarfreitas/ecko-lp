@@ -15,7 +15,7 @@ export default function ShowroomSection() {
             <div>
               <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-4">Uma Experiência Única</h3>
               <p className="text-gray-700 leading-relaxed mb-3 md:mb-4 text-sm md:text-base">
-                Nosso showroom foi cuidadosamente projetado para oferecer uma experiência de compra única e
+                Nosso showroom foi cuidadosamente projetado para oferecer uma experiência de compra ��nica e
                 personalizada. Aqui você pode tocar, experimentar e sentir a qualidade de cada peça da nossa coleção.
               </p>
               <p className="text-gray-700 leading-relaxed text-sm md:text-base">
