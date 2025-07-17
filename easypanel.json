@@ -1,0 +1,40 @@
+{
+  "name": "landing-page-cms",
+  "services": [
+    {
+      "type": "app",
+      "data": {
+        "projectName": "landing-page-cms",
+        "serviceName": "app",
+        "source": {
+          "type": "docker",
+          "image": "landing-page-cms:latest"
+        },
+        "domains": [
+          {
+            "host": "yourdomain.com",
+            "port": 3000,
+            "https": true
+          }
+        ],
+        "env": [
+          {
+            "key": "NODE_ENV",
+            "value": "production"
+          },
+          {
+            "key": "NEXT_PUBLIC_APP_URL",
+            "value": "https://yourdomain.com"
+          }
+        ],
+        "mounts": [
+          {
+            "type": "volume",
+            "name": "app-data",
+            "mountPath": "/app/data"
+          }
+        ]
+      }
+    }
+  ]
+}
