@@ -1,11 +1,15 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
+  "name": "landing-page-cms",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "next build",
+    "deploy": "./deploy.sh",
     "dev": "next dev",
+    "docker:build": "docker build -t landing-page-cms .",
+    "docker:run": "docker run -p 3000:3000 landing-page-cms",
     "lint": "next lint",
+    "setup": "sudo ./setup.sh",
     "start": "next start"
   },
   "dependencies": {

@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  trailingSlash: true,
+  output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,8 +8,15 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true
-  }
+    unoptimized: true,
+    domains: ['localhost'],
+  },
+  experimental: {
+    outputFileTracingRoot: undefined,
+  },
+  env: {
+    CUSTOM_KEY: 'my-value',
+  },
 }
 
 export default nextConfig

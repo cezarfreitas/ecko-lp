@@ -1,11 +1,12 @@
 {
   "name": "landing-page-cms",
+  "version": "1.0.0",
   "services": [
     {
       "type": "app",
       "data": {
         "projectName": "landing-page-cms",
-        "serviceName": "app",
+        "serviceName": "landing-page-app",
         "source": {
           "type": "docker",
           "image": "landing-page-cms:latest"
@@ -13,6 +14,11 @@
         "domains": [
           {
             "host": "yourdomain.com",
+            "port": 3000,
+            "https": true
+          },
+          {
+            "host": "www.yourdomain.com",
             "port": 3000,
             "https": true
           }
@@ -25,15 +31,30 @@
           {
             "key": "NEXT_PUBLIC_APP_URL",
             "value": "https://yourdomain.com"
+          },
+          {
+            "key": "PORT",
+            "value": "3000"
+          },
+          {
+            "key": "HOSTNAME",
+            "value": "0.0.0.0"
           }
         ],
-        "mounts": [
-          {
-            "type": "volume",
-            "name": "app-data",
-            "mountPath": "/app/data"
-          }
-        ]
+        "deploy": {
+          "replicas": 1,
+          "cpuLimit": "0.5",
+          "memoryLimit": "512Mi",
+          "cpuReservation": "0.1",
+          "memoryReservation": "256Mi"
+        },
+        "healthCheck": {
+          "test": ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"],
+          "interval": "30s",
+          "timeout": "10s",
+          "retries": 3,
+          "startPeriod": "40s"
+        }
       }
     }
   ]
