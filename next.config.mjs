@@ -15,10 +15,6 @@ const nextConfig = {
   },
   experimental: {
     outputFileTracingRoot: process.cwd(),
-  },
-  // Disable static generation for admin pages that use localStorage
-  async generateStaticParams() {
-    return []
   }
 }
 
