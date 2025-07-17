@@ -13,17 +13,15 @@ const nextConfig = {
     domains: ['localhost'],
   },
   experimental: {
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: ['lucide-react']
   },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
-  poweredByHeader: false,
-  compress: true,
-  generateEtags: false,
-  httpAgentOptions: {
-    keepAlive: true,
-  },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    }
+    return config
+  }
 }
 
 export default nextConfig
