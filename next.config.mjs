@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -12,10 +13,16 @@ const nextConfig = {
     domains: ['localhost'],
   },
   experimental: {
-    outputFileTracingRoot: undefined,
+    optimizePackageImports: ['lucide-react'],
   },
-  env: {
-    CUSTOM_KEY: 'my-value',
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  poweredByHeader: false,
+  compress: true,
+  generateEtags: false,
+  httpAgentOptions: {
+    keepAlive: true,
   },
 }
 

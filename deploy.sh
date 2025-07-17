@@ -1,105 +1,112 @@
 #!/bin/bash
 
-# Deploy script for Easy Panel VPS
-echo "🚀 Starting deployment process for EasyPanel VPS..."
+# Deploy script for EasyPanel VPS
+set -e
+
+echo "🚀 Iniciando deploy da Landing Page..."
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+# Configuration
+PROJECT_NAME="landing-page-cms"
+DOMAIN="yourdomain.com"
+EMAIL="your-email@domain.com"
+
+# Functions
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
 }
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
+log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-    print_error "Docker is not running. Please start Docker first."
+# Check if running as root
+if [[ $EUID -eq 0 ]]; then
+   log_error "Este script não deve ser executado como root"
+   exit 1
+fi
+
+# Check if Docker is installed
+if ! command -v docker &> /dev/null; then
+    log_error "Docker não está instalado. Execute ./setup.sh primeiro."
+    exit 1
+fi
+
+# Check if Docker Compose is installed
+if ! command -v docker-compose &> /dev/null; then
+    log_error "Docker Compose não está instalado. Execute ./setup.sh primeiro."
     exit 1
 fi
 
 # Stop existing containers
-print_status "Stopping existing containers..."
-docker-compose down --remove-orphans
+log_info "Parando containers existentes..."
+docker-compose down --remove-orphans || true
 
-# Remove old images to free space
-print_status "Cleaning up old Docker images..."
+# Remove old images
+log_info "Removendo imagens antigas..."
 docker image prune -f
-docker container prune -f
 
-# Pull latest changes (if using git)
-if [ -d ".git" ]; then
-    print_status "Pulling latest changes from git..."
-    git pull origin main || print_warning "Git pull failed or not a git repository"
-fi
-
-# Build new image with no cache
-print_status "Building new Docker image..."
-docker-compose build --no-cache --parallel
-
-if [ $? -ne 0 ]; then
-    print_error "Docker build failed!"
-    exit 1
-fi
-
-# Start containers in detached mode
-print_status "Starting containers..."
-docker-compose up -d
-
-if [ $? -ne 0 ]; then
-    print_error "Failed to start containers!"
-    exit 1
-fi
+# Build and start containers
+log_info "Construindo e iniciando containers..."
+docker-compose up -d --build
 
 # Wait for containers to be healthy
-print_status "Waiting for containers to be ready..."
-sleep 10
+log_info "Aguardando containers ficarem saudáveis..."
+sleep 30
 
-# Check container status
-print_status "Checking container status..."
-docker-compose ps
-
-# Test if application is responding
-print_status "Testing application health..."
-sleep 5
-
-if curl -f http://localhost:3000 > /dev/null 2>&1; then
-    print_success "Application is responding correctly!"
+# Check container health
+if docker-compose ps | grep -q "Up (healthy)"; then
+    log_info "✅ Containers estão saudáveis!"
 else
-    print_warning "Application might not be ready yet. Check logs with: docker-compose logs"
+    log_warn "⚠️  Alguns containers podem não estar saudáveis. Verificando logs..."
+    docker-compose logs --tail=50
 fi
 
-# Show logs for debugging
-print_status "Recent application logs:"
+# Setup SSL if not exists
+if [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    log_info "Configurando SSL com Let's Encrypt..."
+    sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
+fi
+
+# Reload Nginx
+log_info "Recarregando Nginx..."
+docker-compose exec nginx nginx -s reload
+
+# Show status
+log_info "Status dos containers:"
+docker-compose ps
+
+# Show logs
+log_info "Últimos logs da aplicação:"
 docker-compose logs --tail=20 app
 
-# Final cleanup
-print_status "Final cleanup..."
+# Performance check
+log_info "Verificando performance..."
+if command -v curl &> /dev/null; then
+    response_time=$(curl -o /dev/null -s -w '%{time_total}\n' http://localhost)
+    log_info "Tempo de resposta: ${response_time}s"
+fi
+
+# Cleanup
+log_info "Limpando recursos não utilizados..."
 docker system prune -f
 
-print_success "🎉 Deployment completed successfully!"
-print_status "Application should be available at:"
-print_status "- Local: http://localhost:3000"
-print_status "- Production: https://yourdomain.com"
+log_info "🎉 Deploy concluído com sucesso!"
+log_info "🌐 Site disponível em: https://$DOMAIN"
+log_info "⚙️  Admin disponível em: https://$DOMAIN/admin"
 
 echo ""
-print_status "Useful commands:"
-echo "  - View logs: docker-compose logs -f"
-echo "  - Restart: docker-compose restart"
-echo "  - Stop: docker-compose down"
-echo "  - Rebuild: ./deploy.sh"
+echo "📊 Comandos úteis:"
+echo "  docker-compose logs -f app     # Ver logs em tempo real"
+echo "  docker-compose restart app    # Reiniciar aplicação"
+echo "  docker-compose down           # Parar todos os containers"
+echo "  docker-compose up -d          # Iniciar containers"

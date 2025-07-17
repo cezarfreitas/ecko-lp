@@ -1,107 +1,229 @@
 #!/bin/bash
 
-# Setup script for EasyPanel VPS deployment
-echo "🔧 Setting up EasyPanel VPS deployment..."
+# Setup script for EasyPanel VPS
+set -e
 
-# Colors for output
+echo "🔧 Configurando servidor para Landing Page CMS..."
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
 }
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
+log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
 # Check if running as root
-if [ "$EUID" -ne 0 ]; then
-    print_error "Please run this script as root (use sudo)"
+if [[ $EUID -ne 0 ]]; then
+   log_error "Este script deve ser executado como root (use sudo)"
+   exit 1
+fi
+
+# Update system
+log_info "Atualizando sistema..."
+apt-get update && apt-get upgrade -y
+
+# Install essential packages
+log_info "Instalando pacotes essenciais..."
+apt-get install -y \
+    curl \
+    wget \
+    git \
+    unzip \
+    software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    ufw \
+    fail2ban \
+    htop \
+    nano \
+    certbot \
+    python3-certbot-nginx
+
+# Install Docker
+log_info "Instalando Docker..."
+if ! command -v docker &> /dev/null; then
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io
+    systemctl enable docker
+    systemctl start docker
+    log_info "✅ Docker instalado com sucesso"
+else
+    log_info "Docker já está instalado"
+fi
+
+# Install Docker Compose
+log_info "Instalando Docker Compose..."
+if ! command -v docker-compose &> /dev/null; then
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+    log_info "✅ Docker Compose instalado com sucesso"
+else
+    log_info "Docker Compose já está instalado"
+fi
+
+# Configure firewall
+log_info "Configurando firewall..."
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+log_info "✅ Firewall configurado"
+
+# Configure fail2ban
+log_info "Configurando fail2ban..."
+cat > /etc/fail2ban/jail.local << EOF
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 5
+
+[sshd]
+enabled = true
+port = ssh
+logpath = /var/log/auth.log
+maxretry = 3
+
+[nginx-http-auth]
+enabled = true
+filter = nginx-http-auth
+port = http,https
+logpath = /var/log/nginx/error.log
+
+[nginx-limit-req]
+enabled = true
+filter = nginx-limit-req
+port = http,https
+logpath = /var/log/nginx/error.log
+maxretry = 10
+EOF
+
+systemctl enable fail2ban
+systemctl restart fail2ban
+log_info "✅ Fail2ban configurado"
+
+# Create application user
+log_info "Criando usuário da aplicação..."
+if ! id "appuser" &>/dev/null; then
+    useradd -m -s /bin/bash appuser
+    usermod -aG docker appuser
+    log_info "✅ Usuário 'appuser' criado"
+else
+    log_info "Usuário 'appuser' já existe"
+fi
+
+# Create directories
+log_info "Criando diretórios..."
+mkdir -p /var/log/nginx
+mkdir -p /etc/nginx/ssl
+mkdir -p /var/www/html
+chown -R appuser:appuser /var/www/html
+
+# Configure log rotation
+log_info "Configurando rotação de logs..."
+cat > /etc/logrotate.d/landing-page << EOF
+/var/log/nginx/*.log {
+    daily
+    missingok
+    rotate 52
+    compress
+    delaycompress
+    notifempty
+    create 644 nginx nginx
+    postrotate
+        if [ -f /var/run/nginx.pid ]; then
+            kill -USR1 \`cat /var/run/nginx.pid\`
+        fi
+    endscript
+}
+EOF
+
+# Create backup script
+log_info "Criando script de backup..."
+cat > /usr/local/bin/backup-landing-page.sh << 'EOF'
+#!/bin/bash
+BACKUP_DIR="/var/backups/landing-page"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p $BACKUP_DIR
+
+# Backup application data
+docker-compose exec -T app tar czf - /app > $BACKUP_DIR/app_$DATE.tar.gz
+
+# Backup nginx config
+tar czf $BACKUP_DIR/nginx_$DATE.tar.gz /etc/nginx/
+
+# Keep only last 7 days of backups
+find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
+
+echo "Backup completed: $DATE"
+EOF
+
+chmod +x /usr/local/bin/backup-landing-page.sh
+
+# Setup cron for backups
+log_info "Configurando backup automático..."
+(crontab -l 2>/dev/null; echo "0 2 * * * /usr/local/bin/backup-landing-page.sh") | crontab -
+
+# Create health check script
+log_info "Criando script de health check..."
+cat > /usr/local/bin/health-check.sh << 'EOF'
+#!/bin/bash
+if curl -f -s http://localhost/health > /dev/null; then
+    echo "✅ Application is healthy"
+    exit 0
+else
+    echo "❌ Application is unhealthy"
+    # Restart containers if unhealthy
+    cd /home/appuser/landing-page-cms && docker-compose restart
     exit 1
 fi
+EOF
 
-# Update system packages
-print_status "Updating system packages..."
-apt update && apt upgrade -y
+chmod +x /usr/local/bin/health-check.sh
 
-# Install Docker if not present
-if ! command -v docker &> /dev/null; then
-    print_status "Installing Docker..."
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sh get-docker.sh
-    usermod -aG docker $SUDO_USER
-    rm get-docker.sh
-    print_success "Docker installed successfully"
-else
-    print_success "Docker is already installed"
-fi
+# Setup monitoring cron
+(crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/health-check.sh") | crontab -
 
-# Install Docker Compose if not present
-if ! command -v docker-compose &> /dev/null; then
-    print_status "Installing Docker Compose..."
-    curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
-    print_success "Docker Compose installed successfully"
-else
-    print_success "Docker Compose is already installed"
-fi
-
-# Install Nginx if not present
-if ! command -v nginx &> /dev/null; then
-    print_status "Installing Nginx..."
-    apt install nginx -y
-    systemctl enable nginx
-    print_success "Nginx installed successfully"
-else
-    print_success "Nginx is already installed"
-fi
-
-# Install Certbot for SSL
-if ! command -v certbot &> /dev/null; then
-    print_status "Installing Certbot for SSL certificates..."
-    apt install certbot python3-certbot-nginx -y
-    print_success "Certbot installed successfully"
-else
-    print_success "Certbot is already installed"
-fi
-
-# Create SSL directory
-print_status "Creating SSL directory..."
-mkdir -p ./ssl
-chmod 755 ./ssl
-
-# Make scripts executable
-print_status "Making scripts executable..."
-chmod +x deploy.sh
-chmod +x setup.sh
+# Optimize system
+log_info "Otimizando sistema..."
+echo 'vm.swappiness=10' >> /etc/sysctl.conf
+echo 'net.core.rmem_max=16777216' >> /etc/sysctl.conf
+echo 'net.core.wmem_max=16777216' >> /etc/sysctl.conf
+sysctl -p
 
 # Create systemd service for auto-start
-print_status "Creating systemd service..."
+log_info "Criando serviço systemd..."
 cat > /etc/systemd/system/landing-page.service << EOF
 [Unit]
-Description=Landing Page Application
+Description=Landing Page CMS
 Requires=docker.service
 After=docker.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=$(pwd)
+WorkingDirectory=/home/appuser/landing-page-cms
 ExecStart=/usr/local/bin/docker-compose up -d
 ExecStop=/usr/local/bin/docker-compose down
-TimeoutStartSec=0
+User=appuser
 
 [Install]
 WantedBy=multi-user.target
@@ -110,62 +232,26 @@ EOF
 systemctl daemon-reload
 systemctl enable landing-page.service
 
-# Configure firewall
-print_status "Configuring firewall..."
-ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw --force enable
+# Set proper permissions
+log_info "Configurando permissões..."
+chown -R appuser:appuser /home/appuser
 
-# Create backup script
-print_status "Creating backup script..."
-cat > backup.sh << 'EOF'
-#!/bin/bash
-BACKUP_DIR="/backup/landing-page"
-DATE=$(date +%Y%m%d_%H%M%S)
+# Display system info
+log_info "Informações do sistema:"
+echo "  OS: $(lsb_release -d | cut -f2)"
+echo "  Docker: $(docker --version)"
+echo "  Docker Compose: $(docker-compose --version)"
+echo "  Firewall: $(ufw status | head -1)"
 
-mkdir -p $BACKUP_DIR
+log_info "🎉 Configuração do servidor concluída!"
+log_info "📋 Próximos passos:"
+echo "  1. Clone o repositório: git clone <seu-repo> /home/appuser/landing-page-cms"
+echo "  2. Configure o domínio nos arquivos de configuração"
+echo "  3. Execute: ./deploy.sh"
+echo "  4. Configure SSL: sudo certbot --nginx -d yourdomain.com"
 
-# Backup application files
-tar -czf $BACKUP_DIR/app_$DATE.tar.gz \
-    --exclude=node_modules \
-    --exclude=.next \
-    --exclude=.git \
-    .
-
-# Backup Docker images
-docker save landing-page-cms:latest | gzip > $BACKUP_DIR/docker_image_$DATE.tar.gz
-
-# Keep only last 7 backups
-find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
-
-echo "Backup completed: $BACKUP_DIR"
-EOF
-
-chmod +x backup.sh
-
-# Setup log rotation
-print_status "Setting up log rotation..."
-cat > /etc/logrotate.d/landing-page << EOF
-/var/lib/docker/containers/*/*-json.log {
-    daily
-    rotate 7
-    compress
-    delaycompress
-    missingok
-    notifempty
-    create 644 root root
-}
-EOF
-
-print_success "🎉 Setup completed successfully!"
-print_status "Next steps:"
-echo "1. Update yourdomain.com in nginx.conf and docker-compose.yml"
-echo "2. Run: ./deploy.sh"
-echo "3. Setup SSL: certbot --nginx -d yourdomain.com -d www.yourdomain.com"
-echo "4. Test the application"
-
-print_warning "Don't forget to:"
-echo "- Configure your domain DNS to point to this server"
-echo "- Update environment variables in docker-compose.yml"
-echo "- Setup monitoring and backups"
+log_warn "⚠️  Lembre-se de:"
+echo "  - Alterar as senhas padrão"
+echo "  - Configurar backup externo"
+echo "  - Monitorar logs regularmente"
+echo "  - Manter o sistema atualizado"
